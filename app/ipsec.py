@@ -76,4 +76,35 @@ def parse_ipsec_status():
         users[user]["rx"] += s["rx"]
         users[user]["tx"] += s["tx"]
 
+    # --- добавляем offline пользователей ---
+    all_users = load_all_users()
+
+    for u in all_users:
+        if u not in users:
+            users[u] = {
+                "online": False,
+                "uptime": "-",
+                "rx": 0,
+                "tx": 0
+            }
+
+    return users
+
+def load_all_users():
+    users = set()
+
+    try:
+        with open("/etc/ipsec.secrets") as f:
+            for line in f:
+                line = line.strip()
+
+                if not line or line.startswith("#"):
+                    continue
+
+                if ": EAP" in line:
+                    users.add(line.split(":")[0].strip())
+
+    except Exception:
+        pass
+
     return users
