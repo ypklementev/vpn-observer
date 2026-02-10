@@ -1,268 +1,298 @@
 <!DOCTYPE html>
 <html lang="ru">
+
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>VPN Observer</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VPN Observer</title>
 
-<style>
-:root {
-  --bg: #0b0f14;
-  --card: #121822;
-  --text: #e6edf3;
-  --muted: #8b949e;
-  --green: #3fb950;
-  --red: #f85149;
-  --blue: #58a6ff;
-  --border: #21262d;
-}
+    <style>
+        :root {
+            --bg: #0b0f14;
+            --card: #121822;
+            --text: #e6edf3;
+            --muted: #8b949e;
+            --green: #3fb950;
+            --red: #f85149;
+            --blue: #58a6ff;
+            --border: #21262d;
+        }
 
-* { box-sizing: border-box; }
+        * {
+            box-sizing: border-box;
+        }
 
-body {
-  margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  background: var(--bg);
-  color: var(--text);
-}
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+        }
 
-header {
-  padding: 16px 24px;
-  border-bottom: 1px solid var(--border);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
+        header {
+            padding: 16px 24px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
 
-header h1 {
-  font-size: 18px;
-  margin: 0;
-}
+        header h1 {
+            font-size: 18px;
+            margin: 0;
+        }
 
-header span {
-  color: var(--muted);
-  font-size: 13px;
-}
+        header span {
+            color: var(--muted);
+            font-size: 13px;
+        }
 
-main {
-  padding: 20px;
-}
+        main {
+            padding: 20px;
+        }
 
-.cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 16px;
-  margin-bottom: 24px;
-}
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
 
-.card {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 16px;
-}
+        .card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 16px;
+        }
 
-.card h2 {
-  margin: 0 0 6px;
-  font-size: 14px;
-  color: var(--muted);
-}
+        .card h2 {
+            margin: 0 0 6px;
+            font-size: 14px;
+            color: var(--muted);
+        }
 
-.card div {
-  font-size: 22px;
-  font-weight: 600;
-}
+        .card div {
+            font-size: 22px;
+            font-weight: 600;
+        }
 
-.table {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  overflow: hidden;
-}
+        .table {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+        }
 
-table {
-  width: 100%;
-  border-collapse: collapse;
-}
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
 
-thead {
-  background: #0e1621;
-}
+        thead {
+            background: #0e1621;
+        }
 
-th, td {
-  padding: 12px 14px;
-  text-align: left;
-  font-size: 14px;
-}
+        th,
+        td {
+            padding: 12px 14px;
+            text-align: left;
+            font-size: 14px;
+        }
 
-th {
-  color: var(--muted);
-  font-weight: 500;
-}
+        th {
+            color: var(--muted);
+            font-weight: 500;
+        }
 
-tr:not(:last-child) td {
-  border-bottom: 1px solid var(--border);
-}
+        tr:not(:last-child) td {
+            border-bottom: 1px solid var(--border);
+        }
 
-.status {
-  font-weight: 600;
-}
+        .status {
+            font-weight: 600;
+        }
 
-.status.online {
-  color: var(--green);
-}
+        .status.online {
+            color: var(--green);
+        }
 
-.traffic {
-  color: var(--blue);
-  font-weight: 500;
-}
+        .status.offline {
+            color: var(--red);
+        }
 
-.fade {
-  animation: fade 0.4s ease-in-out;
-}
+        .traffic {
+            color: var(--blue);
+            font-weight: 500;
+        }
 
-@keyframes fade {
-  from { opacity: 0.4 }
-  to   { opacity: 1 }
-}
+        .fade {
+            animation: fade 0.4s ease-in-out;
+        }
 
-@media (max-width: 600px) {
-  th:nth-child(3), td:nth-child(3) {
-    display: none;
-  }
-}
-</style>
+        @keyframes fade {
+            from {
+                opacity: 0.4
+            }
+
+            to {
+                opacity: 1
+            }
+        }
+
+        @media (max-width: 600px) {
+
+            th:nth-child(3),
+            td:nth-child(3) {
+                display: none;
+            }
+        }
+    </style>
 </head>
 
 <body>
 
-<header>
-  <h1>VPN Observer</h1>
-  <span id="updated">обновление…</span>
-</header>
+    <header>
+        <h1>VPN Observer</h1>
+        <span id="updated">обновление…</span>
+    </header>
 
-<main>
+    <main>
 
-<div class="cards">
-  <div class="card">
-    <h2>Онлайн</h2>
-    <div id="count-online">–</div>
-  </div>
-  <div class="card">
-    <h2>Всего Принято</h2>
-    <div id="total-rx">–</div>
-  </div>
-  <div class="card">
-    <h2>Всего Отправлено</h2>
-    <div id="total-tx">–</div>
-  </div>
-</div>
+        <div class="cards">
+            <div class="card">
+                <h2>Онлайн</h2>
+                <div id="count-online">–</div>
+            </div>
+            <div class="card">
+                <h2>Всего Принято</h2>
+                <div id="total-rx">–</div>
+            </div>
+            <div class="card">
+                <h2>Всего Отправлено</h2>
+                <div id="total-tx">–</div>
+            </div>
+        </div>
 
-<div class="table">
-<table>
-  <thead>
-    <tr>
-      <th>Пользователь</th>
-      <th>Статус</th>
-      <th>Uptime</th>
-      <th>Загрузка</th>
-      <th>Выгрузка</th>
-    </tr>
-  </thead>
-  <tbody id="rows"></tbody>
-</table>
-<canvas id="graph" height="120"></canvas>
-</div>
+        <div class="table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Пользователь</th>
+                        <th>Статус</th>
+                        <th>Uptime</th>
+                        <th>Загрузка</th>
+                        <th>Выгрузка</th>
+                    </tr>
+                </thead>
+                <tbody id="rows"></tbody>
+            </table>
+            <canvas id="graph" height="120"></canvas>
+        </div>
 
-</main>
+    </main>
 
-<script>
-function mb(v) {
-  return (v / 1024 / 1024).toFixed(1) + " MB";
-}
+    <script>
+        function mb(v) {
+            return (v / 1024 / 1024).toFixed(1) + " MB";
+        }
 
-async function load() {
-  const res = await fetch("/api/realtime");
-  const data = await res.json();
+        async function load() {
+            const res = await fetch("/api/realtime");
+            const data = await res.json();
 
-  const tbody = document.getElementById("rows");
-  tbody.innerHTML = "";
+            const tbody = document.getElementById("rows");
 
-  let totalRx = 0;
-  let totalTx = 0;
-  let online = 0;
+            let totalRx = 0;
+            let totalTx = 0;
+            let online = 0;
 
-  for (const [user, s] of Object.entries(data)) {
-    online++;
-    totalRx += s.rx;
-    totalTx += s.tx;
+            const sorted = Object.entries(data).sort((a, b) => {
+                if (a[1].online !== b[1].online) {
+                    return b[1].online - a[1].online;
+                }
+                return a[0].localeCompare(b[0]);
+            });
 
-    tbody.innerHTML += `
-      <tr class="fade">
-        <td>${user}</td>
-        <td class="status online">ONLINE</td>
-        <td>${s.uptime}</td>
-        <td class="traffic">${mb(s.rx)}</td>
-        <td class="traffic">${mb(s.tx)}</td>
-      </tr>
-    `;
-  }
+            let html = "";
 
-  document.getElementById("count-online").innerText = online;
-  document.getElementById("total-rx").innerText = mb(totalRx);
-  document.getElementById("total-tx").innerText = mb(totalTx);
+            for (const [user, s] of sorted) {
+                if (s.online) online++;
 
-  document.getElementById("updated").innerText =
-    "обновлено " + new Date().toLocaleTimeString();
-}
+                totalRx += s.rx || 0;
+                totalTx += s.tx || 0;
 
-load();
-setInterval(load, 5000);
+                const statusClass = s.online ? "online" : "offline";
+                const statusText = s.online ? "ONLINE" : "OFFLINE";
 
-const canvas = document.getElementById("graph");
-const ctx = canvas.getContext("2d");
+                html += `
+                <tr class="fade">
+                <td>${user}</td>
+                <td class="status ${statusClass}">${statusText}</td>
+                <td>${s.uptime}</td>
+                <td class="traffic">${mb(s.rx || 0)}</td>
+                <td class="traffic">${mb(s.tx || 0)}</td>
+                </tr>
+                `;
+            }
 
-async function drawGraph() {
-  const res = await fetch("/api/history");
-  const history = await res.json();
+            tbody.innerHTML = html;
 
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+            document.getElementById("count-online").innerText = online;
+            document.getElementById("total-rx").innerText = mb(totalRx);
+            document.getElementById("total-tx").innerText = mb(totalTx);
 
-  let users = Object.keys(history);
-  if (!users.length) return;
+            document.getElementById("updated").innerText =
+                "обновлено " + new Date().toLocaleTimeString();
+        }
 
-  let maxVal = 0;
+        load();
+        setInterval(load, 5000);
 
-  users.forEach(u => {
-    history[u].forEach(p => {
-      maxVal = Math.max(maxVal, p.rx + p.tx);
-    });
-  });
+        const canvas = document.getElementById("graph");
+        const ctx = canvas.getContext("2d");
 
-  let colorIndex = 0;
+        async function drawGraph() {
+            const res = await fetch("/api/history");
+            const history = await res.json();
 
-  users.forEach(user => {
-    const data = history[user];
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    ctx.beginPath();
-    ctx.strokeStyle = `hsl(${colorIndex * 60},70%,60%)`;
-    colorIndex++;
+            let users = Object.keys(history);
+            if (!users.length) return;
 
-    data.forEach((p, i) => {
-      const x = (i / 60) * canvas.width;
-      const y = canvas.height - ((p.rx + p.tx) / maxVal) * canvas.height;
+            let maxVal = 0;
 
-      if (i === 0) ctx.moveTo(x, y);
-      else ctx.lineTo(x, y);
-    });
+            users.forEach(u => {
+                history[u].forEach(p => {
+                    maxVal = Math.max(maxVal, p.rx + p.tx);
+                });
+            });
 
-    ctx.stroke();
-  });
-}
+            let colorIndex = 0;
 
-setInterval(drawGraph, 5000);
-drawGraph();
-</script>
+            users.forEach(user => {
+                const data = history[user];
+
+                ctx.beginPath();
+                ctx.strokeStyle = `hsl(${colorIndex * 60},70%,60%)`;
+                colorIndex++;
+
+                data.forEach((p, i) => {
+                    const x = (i / 60) * canvas.width;
+                    const y = canvas.height - ((p.rx + p.tx) / maxVal) * canvas.height;
+
+                    if (i === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                });
+
+                ctx.stroke();
+            });
+        }
+
+        setInterval(drawGraph, 5000);
+        drawGraph();
+    </script>
 
 </body>
+
 </html>
