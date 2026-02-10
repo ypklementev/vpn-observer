@@ -1,6 +1,9 @@
 import subprocess
 import re
+import time
 
+PREV_USERS = {}
+HISTORY = {}
 
 RE_IKE = re.compile(
     r'ikev2-vpn\[(\d+)\]: ESTABLISHED (.+?) ago, .*?\.\.\.(\S+)\[(.*?)\]'
@@ -94,7 +97,16 @@ def parse_ipsec_status():
     # --- OFFLINE USERS ---
     for u in load_all_users():
         if u not in users:
-            users[u] = {"online": False, "rx": 0, "tx": 0}
+            users[u] = {
+                "online": False,
+                "rx": 0,
+                "tx": 0,
+                "speed_rx": 0,
+                "speed_tx": 0
+            }
+
+    # ✅ ВОТ ЭТО БЫЛО ПРОПУЩЕНО
+    calculate_speed(users)
 
     return {
         "sessions": list(sessions.values()),
@@ -119,3 +131,45 @@ def load_all_users():
         pass
 
     return users
+
+def calculate_speed(users):
+
+    global PREV_USERS, HISTORY
+
+    now = time.time()
+
+    for username, u in users.items():
+
+        if username in PREV_USERS:
+
+            prev = PREV_USERS[username]
+            dt = now - prev["time"]
+
+            if dt > 0:
+                u["speed_rx"] = max(0, (u["rx"] - prev["rx"]) / dt)
+                u["speed_tx"] = max(0, (u["tx"] - prev["tx"]) / dt)
+            else:
+                u["speed_rx"] = 0
+                u["speed_tx"] = 0
+
+        else:
+            u["speed_rx"] = 0
+            u["speed_tx"] = 0
+
+        # --- history ---
+        HISTORY.setdefault(username, [])
+        HISTORY[username].append({
+            "rx": u["speed_rx"],
+            "tx": u["speed_tx"]
+        })
+
+        HISTORY[username] = HISTORY[username][-60:]
+
+    PREV_USERS = {
+        u: {
+            "rx": users[u]["rx"],
+            "tx": users[u]["tx"],
+            "time": now
+        }
+        for u in users
+    }
