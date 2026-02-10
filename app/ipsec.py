@@ -6,13 +6,11 @@ RE_IKE = re.compile(
     r'ikev2-vpn\[(\d+)\]: ESTABLISHED (.+?) ago, .*?\.\.\.(\S+)\[(.*?)\]'
 )
 
-RE_EAP = re.compile(
-    r'Remote EAP identity: (\S+)'
-)
+RE_EAP = re.compile(r'Remote EAP identity: (\S+)')
 
-RE_CHILD = re.compile(
-    r'ikev2-vpn\{\d+\}:.*?(\d+) bytes_i .*? (\d+) bytes_o.*?=== (\S+)'
-)
+RE_CHILD_ID = re.compile(r'ikev2-vpn\{(\d+)\}:')
+RE_BYTES = re.compile(r'(\d+) bytes_i .*? (\d+) bytes_o')
+RE_VPN_IP = re.compile(r'=== (\d+\.\d+\.\d+\.\d+)/\d+')
 
 
 def parse_ipsec_status():
@@ -26,7 +24,9 @@ def parse_ipsec_status():
     lines = out.splitlines()
 
     sessions = {}
+
     current_ike = None
+    current_child_owner = None   # к какой IKE относится текущий CHILD
 
     for line in lines:
 
@@ -47,6 +47,7 @@ def parse_ipsec_status():
             }
 
             current_ike = ike_id
+            current_child_owner = None
             continue
 
         # --- EAP identity ---
@@ -55,13 +56,27 @@ def parse_ipsec_status():
             sessions[current_ike]["username"] = m.group(1)
             continue
 
-        # --- CHILD (traffic + VPN IP) ---
-        m = RE_CHILD.search(line)
-        if m and current_ike:
-            sessions[current_ike]["rx"] += int(m.group(1))
-            sessions[current_ike]["tx"] += int(m.group(2))
-            sessions[current_ike]["vpn_ip"] = m.group(3).split("/")[0]
+        # --- CHILD header ---
+        m = RE_CHILD_ID.search(line)
+        if m:
+            # CHILD всегда относится к последней IKE
+            current_child_owner = current_ike
             continue
+
+        # --- Traffic ---
+        if current_child_owner:
+            m = RE_BYTES.search(line)
+            if m:
+                sessions[current_child_owner]["rx"] += int(m.group(1))
+                sessions[current_child_owner]["tx"] += int(m.group(2))
+                continue
+
+        # --- VPN IP ---
+        if current_child_owner:
+            m = RE_VPN_IP.search(line)
+            if m:
+                sessions[current_child_owner]["vpn_ip"] = m.group(1)
+                continue
 
     # --- USERS AGGREGATION ---
     users = {}
@@ -71,11 +86,12 @@ def parse_ipsec_status():
 
         if u not in users:
             users[u] = {
-                "online": True,
+                "online": False,
                 "rx": 0,
                 "tx": 0
             }
 
+        users[u]["online"] = True
         users[u]["rx"] += s["rx"]
         users[u]["tx"] += s["tx"]
 
