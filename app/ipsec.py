@@ -2,15 +2,19 @@
 import subprocess
 import re
 
-SESSION_RE = re.compile(
-    r'^\s*(?P<name>\S+)\[(?P<id>\d+)\]:\s+ESTABLISHED.*?,\s+(?P<uptime>[\w\s]+)',
-    re.MULTILINE
+
+RE_ESTABLISHED = re.compile(
+    r'\[(\d+)\]: ESTABLISHED (\d+) (minutes?|hours?) ago'
 )
 
-CHILD_RE = re.compile(
-    r'^\s+installed.*?SPIs.*?in\s+(?P<rx>\d+)\s+bytes,\s+out\s+(?P<tx>\d+)\s+bytes',
-    re.MULTILINE
+RE_IDENTITY = re.compile(
+    r'Remote EAP identity: (\S+)'
 )
+
+RE_TRAFFIC = re.compile(
+    r'(\d+) bytes_i .* (\d+) bytes_o'
+)
+
 
 def parse_ipsec_status():
     proc = subprocess.run(
@@ -18,28 +22,58 @@ def parse_ipsec_status():
         capture_output=True,
         text=True
     )
-    text = proc.stdout
 
+    lines = proc.stdout.splitlines()
+
+    sessions = {}
+    current_ike = None
+
+    for line in lines:
+
+        # --- ESTABLISHED ---
+        m = RE_ESTABLISHED.search(line)
+        if m:
+            ike_id = m.group(1)
+            uptime = f"{m.group(2)} {m.group(3)}"
+
+            sessions[ike_id] = {
+                "username": "unknown",
+                "uptime": uptime,
+                "rx": 0,
+                "tx": 0,
+                "online": True
+            }
+            current_ike = ike_id
+            continue
+
+        # --- USERNAME ---
+        m = RE_IDENTITY.search(line)
+        if m and current_ike:
+            sessions[current_ike]["username"] = m.group(1)
+            continue
+
+        # --- TRAFFIC ---
+        m = RE_TRAFFIC.search(line)
+        if m and current_ike:
+            sessions[current_ike]["rx"] += int(m.group(1))
+            sessions[current_ike]["tx"] += int(m.group(2))
+            continue
+
+    # --- агрегируем по пользователю ---
     users = {}
 
-    sessions = SESSION_RE.finditer(text)
-    children = CHILD_RE.finditer(text)
+    for s in sessions.values():
+        user = s["username"]
 
-    child_list = list(children)
-    child_idx = 0
+        if user not in users:
+            users[user] = {
+                "online": True,
+                "uptime": s["uptime"],
+                "rx": 0,
+                "tx": 0
+            }
 
-    for s in sessions:
-        rx = tx = 0
-        if child_idx < len(child_list):
-            rx = int(child_list[child_idx].group("rx"))
-            tx = int(child_list[child_idx].group("tx"))
-            child_idx += 1
-
-        users[s.group("name")] = {
-            "online": True,
-            "uptime": s.group("uptime"),
-            "rx": rx,
-            "tx": tx
-        }
+        users[user]["rx"] += s["rx"]
+        users[user]["tx"] += s["tx"]
 
     return users
