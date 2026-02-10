@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>VPN Admin</title>
+  <style>
+    body { font-family: monospace; background:#111; color:#eee }
+    table { border-collapse: collapse; width:100% }
+    th, td { border:1px solid #333; padding:6px }
+    .on { color:#0f0 }
+    .off { color:#f33 }
+  </style>
+</head>
+<body>
+
+<h2>VPN sessions</h2>
+<table>
+  <thead>
+    <tr>
+      <th>User</th>
+      <th>Status</th>
+      <th>Uptime</th>
+      <th>RX</th>
+      <th>TX</th>
+    </tr>
+  </thead>
+  <tbody id="rows"></tbody>
+</table>
+
+<script>
+async function load() {
+  const r = await fetch("/api/realtime");
+  const data = await r.json();
+
+  const tbody = document.getElementById("rows");
+  tbody.innerHTML = "";
+
+  for (const [user, s] of Object.entries(data)) {
+    tbody.innerHTML += `
+      <tr>
+        <td>${user}</td>
+        <td class="on">ONLINE</td>
+        <td>${s.uptime}</td>
+        <td>${(s.rx/1024/1024).toFixed(1)} MB</td>
+        <td>${(s.tx/1024/1024).toFixed(1)} MB</td>
+      </tr>
+    `;
+  }
+}
+
+load();
+setInterval(load, 5000);
+</script>
+
+</body>
+</html>
