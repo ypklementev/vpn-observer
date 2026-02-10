@@ -2,7 +2,7 @@ import subprocess
 import re
 
 
-RE_SESSION = re.compile(
+RE_IKE = re.compile(
     r'ikev2-vpn\[(\d+)\]: ESTABLISHED (.+?) ago, .*?\.\.\.(\S+)\[(.*?)\]'
 )
 
@@ -11,7 +11,7 @@ RE_EAP = re.compile(
 )
 
 RE_CHILD = re.compile(
-    r'ikev2-vpn\{(\d+)\}:.*?(\d+) bytes_i.*?(\d+) bytes_o.*?=== (\S+)'
+    r'ikev2-vpn\{\d+\}:.*?(\d+) bytes_i .*? (\d+) bytes_o.*?=== (\S+)'
 )
 
 
@@ -28,25 +28,19 @@ def parse_ipsec_status():
     sessions = {}
     current_ike = None
 
-    # --------------------
-    # PASS 1 — IKE sessions
-    # --------------------
-
     for line in lines:
 
-        m = RE_SESSION.search(line)
+        # --- IKE ---
+        m = RE_IKE.search(line)
         if m:
             ike_id = m.group(1)
-            uptime = m.group(2)
-            remote_ip = m.group(3)
-            bracket_identity = m.group(4)
 
             sessions[ike_id] = {
                 "session_id": ike_id,
-                "username": bracket_identity,
-                "remote_ip": remote_ip,
+                "username": m.group(4),
+                "remote_ip": m.group(3),
                 "vpn_ip": "-",
-                "uptime": uptime,
+                "uptime": m.group(2),
                 "rx": 0,
                 "tx": 0,
                 "online": True
@@ -55,41 +49,21 @@ def parse_ipsec_status():
             current_ike = ike_id
             continue
 
+        # --- EAP identity ---
         m = RE_EAP.search(line)
         if m and current_ike:
             sessions[current_ike]["username"] = m.group(1)
             continue
 
-    # --------------------
-    # PASS 2 — CHILD traffic
-    # --------------------
-
-    for line in lines:
-
+        # --- CHILD (traffic + VPN IP) ---
         m = RE_CHILD.search(line)
-        if not m:
+        if m and current_ike:
+            sessions[current_ike]["rx"] += int(m.group(1))
+            sessions[current_ike]["tx"] += int(m.group(2))
+            sessions[current_ike]["vpn_ip"] = m.group(3).split("/")[0]
             continue
 
-        child_id = m.group(1)
-        rx = int(m.group(2))
-        tx = int(m.group(3))
-        vpn_ip = m.group(4).split("/")[0]
-
-        # child reqid обычно соответствует ike
-        # strongswan выводит child сразу после ike блока
-        # поэтому берём последний IKE
-
-        if sessions:
-            last_ike = list(sessions.keys())[-1]
-
-            sessions[last_ike]["rx"] += rx
-            sessions[last_ike]["tx"] += tx
-            sessions[last_ike]["vpn_ip"] = vpn_ip
-
-    # --------------------
-    # USERS AGGREGATION
-    # --------------------
-
+    # --- USERS AGGREGATION ---
     users = {}
 
     for s in sessions.values():
@@ -105,10 +79,7 @@ def parse_ipsec_status():
         users[u]["rx"] += s["rx"]
         users[u]["tx"] += s["tx"]
 
-    # --------------------
-    # OFFLINE USERS
-    # --------------------
-
+    # --- OFFLINE USERS ---
     for u in load_all_users():
         if u not in users:
             users[u] = {
@@ -124,7 +95,6 @@ def parse_ipsec_status():
 
 
 def load_all_users():
-
     users = set()
 
     try:
@@ -137,7 +107,6 @@ def load_all_users():
 
                 if ": EAP" in line:
                     users.add(line.split(":")[0].strip())
-
     except Exception:
         pass
 
