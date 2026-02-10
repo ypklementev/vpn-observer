@@ -17,6 +17,3 @@ class SessionResponse(BaseModel):
     disconnected_at: datetime | None
     assigned_ip: str
     remote_ip: str
-
-    class Config:
-        orm_mode = True
