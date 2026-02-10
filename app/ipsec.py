@@ -3,7 +3,7 @@ import re
 
 
 RE_IKE = re.compile(
-    r'ikev2-vpn\[(\d+)\]: ESTABLISHED (.+?) ago, .*?\.\.\.([^\[]+)(?:\[(.*?)\])?'
+    r'ikev2-vpn\[(\d+)\]: ESTABLISHED (.+?) ago, .*?\.\.\.(\S+)\[(.*?)\]'
 )
 
 RE_EAP = re.compile(
@@ -16,6 +16,7 @@ RE_CHILD = re.compile(
 
 
 def parse_ipsec_status():
+
     out = subprocess.run(
         ["ipsec", "statusall"],
         capture_output=True,
@@ -28,14 +29,15 @@ def parse_ipsec_status():
     current_ike = None
 
     for line in lines:
+
         # --- IKE ---
         m = RE_IKE.search(line)
         if m:
             ike_id = m.group(1)
-            
+
             sessions[ike_id] = {
                 "session_id": ike_id,
-                "username": None,  # Изначально не устанавливаем
+                "username": m.group(4),
                 "remote_ip": m.group(3),
                 "vpn_ip": "-",
                 "uptime": m.group(2),
@@ -43,7 +45,7 @@ def parse_ipsec_status():
                 "tx": 0,
                 "online": True
             }
-            
+
             current_ike = ike_id
             continue
 
@@ -59,16 +61,8 @@ def parse_ipsec_status():
             sessions[current_ike]["rx"] += int(m.group(1))
             sessions[current_ike]["tx"] += int(m.group(2))
             sessions[current_ike]["vpn_ip"] = m.group(3).split("/")[0]
-            
-            # Если username еще не установлен через EAP, используем то, что в квадратных скобках
-            if sessions[current_ike]["username"] is None:
-                # Пытаемся извлечь из предыдущих строк или оставляем как есть
-                sessions[current_ike]["username"] = "unknown"
             continue
 
-    # Удаляем сессии без username (если такие есть)
-    sessions = {k: v for k, v in sessions.items() if v["username"] is not None}
-    
     # --- USERS AGGREGATION ---
     users = {}
 
