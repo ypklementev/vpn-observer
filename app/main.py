@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from app.routers import admin_router
+from app.routers.admin_router import router as admin_router
 from app.routers.lifecycle_router import router as lifecycle_router
 
 app = FastAPI(title="vpn-observer")
