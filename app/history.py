@@ -1,21 +1,22 @@
-from collections import defaultdict, deque
+from collections import defaultdict
 import time
 
-MAX_POINTS = 60  # 5 минут если refresh 5 сек
+HISTORY = defaultdict(list)
+MAX_POINTS = 60
 
-history = defaultdict(lambda: deque(maxlen=MAX_POINTS))
-
-
-def push_snapshot(data):
+def push_snapshot(users):
     ts = int(time.time())
 
-    for user, s in data.items():
-        history[user].append({
+    for user, s in users.items():
+        HISTORY[user].append({
             "ts": ts,
-            "rx": s["rx"],
-            "tx": s["tx"]
+            "rx": s.get("rx", 0),
+            "tx": s.get("tx", 0),
         })
+
+        if len(HISTORY[user]) > MAX_POINTS:
+            HISTORY[user] = HISTORY[user][-MAX_POINTS:]
 
 
 def get_history():
-    return history
+    return HISTORY

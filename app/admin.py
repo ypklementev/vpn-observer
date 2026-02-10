@@ -9,7 +9,7 @@ router = APIRouter()
 @router.get("/api/realtime")
 def realtime():
     data = parse_ipsec_status()
-    push_snapshot(data)
+    push_snapshot(data["users"])
     return data
 
 @router.get("/api/history")
