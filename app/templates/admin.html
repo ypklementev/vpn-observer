@@ -169,6 +169,15 @@ canvas {
 
 <script>
 
+function speed(v){
+  if(!v) return "0 KB/s";
+
+  if(v > 1024*1024)
+    return (v/1024/1024).toFixed(2) + " MB/s";
+
+  return (v/1024).toFixed(1) + " KB/s";
+}
+
 function mb(v){
   return ((v || 0) / 1024 / 1024).toFixed(1) + " MB";
 }
@@ -214,12 +223,16 @@ async function load(){
     totalTx += userTx;
 
     html += `
-      <tr style="background:#0f141c">
+    <tr style="background:#0f141c">
         <td colspan="7">
-          <b>${user}</b>
-          <span style="color:#8b949e">(${sess.length} sessions)</span>
+        <b>${user}</b>
+        <span style="color:#8b949e">
+            (${sess.length} sessions)
+            • ↓ ${speed(usersMeta[user]?.speed_rx || 0)}
+            • ↑ ${speed(usersMeta[user]?.speed_tx || 0)}
+        </span>
         </td>
-      </tr>
+    </tr>
     `;
 
     sess.forEach(s=>{
