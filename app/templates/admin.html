@@ -2,297 +2,319 @@
 <html lang="ru">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VPN Observer</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VPN Observer</title>
 
-    <style>
-        :root {
-            --bg: #0b0f14;
-            --card: #121822;
-            --text: #e6edf3;
-            --muted: #8b949e;
-            --green: #3fb950;
-            --red: #f85149;
-            --blue: #58a6ff;
-            --border: #21262d;
-        }
+<style>
+:root {
+  --bg: #0b0f14;
+  --card: #121822;
+  --text: #e6edf3;
+  --muted: #8b949e;
+  --green: #3fb950;
+  --red: #f85149;
+  --blue: #58a6ff;
+  --border: #21262d;
+}
 
-        * {
-            box-sizing: border-box;
-        }
+* { box-sizing: border-box; }
 
-        body {
-            margin: 0;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background: var(--bg);
-            color: var(--text);
-        }
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
 
-        header {
-            padding: 16px 24px;
-            border-bottom: 1px solid var(--border);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
+header {
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
 
-        header h1 {
-            font-size: 18px;
-            margin: 0;
-        }
+main { padding: 20px; }
 
-        header span {
-            color: var(--muted);
-            font-size: 13px;
-        }
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
 
-        main {
-            padding: 20px;
-        }
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+}
 
-        .cards {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-            gap: 16px;
-            margin-bottom: 24px;
-        }
+.card h2 {
+  margin: 0 0 6px;
+  font-size: 14px;
+  color: var(--muted);
+}
 
-        .card {
-            background: var(--card);
-            border: 1px solid var(--border);
-            border-radius: 10px;
-            padding: 16px;
-        }
+.card div {
+  font-size: 22px;
+  font-weight: 600;
+}
 
-        .card h2 {
-            margin: 0 0 6px;
-            font-size: 14px;
-            color: var(--muted);
-        }
+.table {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
 
-        .card div {
-            font-size: 22px;
-            font-weight: 600;
-        }
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
 
-        .table {
-            background: var(--card);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            overflow: hidden;
-        }
+thead { background: #0e1621; }
 
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
+th, td {
+  padding: 12px 14px;
+  text-align: left;
+  font-size: 14px;
+}
 
-        thead {
-            background: #0e1621;
-        }
+th {
+  color: var(--muted);
+  font-weight: 500;
+}
 
-        th,
-        td {
-            padding: 12px 14px;
-            text-align: left;
-            font-size: 14px;
-        }
+tr:not(:last-child) td {
+  border-bottom: 1px solid var(--border);
+}
 
-        th {
-            color: var(--muted);
-            font-weight: 500;
-        }
+.status { font-weight: 600; }
+.status.online { color: var(--green); }
+.status.offline { color: var(--red); }
 
-        tr:not(:last-child) td {
-            border-bottom: 1px solid var(--border);
-        }
+.traffic {
+  color: var(--blue);
+  font-weight: 500;
+}
 
-        .status {
-            font-weight: 600;
-        }
+.fade { animation: fade 0.4s ease-in-out; }
 
-        .status.online {
-            color: var(--green);
-        }
+@keyframes fade {
+  from { opacity: 0.4 }
+  to { opacity: 1 }
+}
 
-        .status.offline {
-            color: var(--red);
-        }
+canvas {
+  width: 100%;
+  background: #0f141c;
+  border-top: 1px solid var(--border);
+}
 
-        .traffic {
-            color: var(--blue);
-            font-weight: 500;
-        }
-
-        .fade {
-            animation: fade 0.4s ease-in-out;
-        }
-
-        @keyframes fade {
-            from {
-                opacity: 0.4
-            }
-
-            to {
-                opacity: 1
-            }
-        }
-
-        @media (max-width: 600px) {
-
-            th:nth-child(3),
-            td:nth-child(3) {
-                display: none;
-            }
-        }
-    </style>
+@media (max-width: 600px) {
+  th:nth-child(3),
+  td:nth-child(3) {
+    display: none;
+  }
+}
+</style>
 </head>
 
 <body>
 
-    <header>
-        <h1>VPN Observer</h1>
-        <span id="updated">обновление…</span>
-    </header>
+<header>
+<h1>VPN Observer</h1>
+<span id="updated">обновление…</span>
+</header>
 
-    <main>
+<main>
 
-        <div class="cards">
-            <div class="card">
-                <h2>Онлайн</h2>
-                <div id="count-online">–</div>
-            </div>
-            <div class="card">
-                <h2>Всего Принято</h2>
-                <div id="total-rx">–</div>
-            </div>
-            <div class="card">
-                <h2>Всего Отправлено</h2>
-                <div id="total-tx">–</div>
-            </div>
-        </div>
+<div class="cards">
+  <div class="card">
+    <h2>Онлайн</h2>
+    <div id="count-online">–</div>
+  </div>
+  <div class="card">
+    <h2>Всего Принято</h2>
+    <div id="total-rx">–</div>
+  </div>
+  <div class="card">
+    <h2>Всего Отправлено</h2>
+    <div id="total-tx">–</div>
+  </div>
+</div>
 
-        <div class="table">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Пользователь</th>
-                        <th>Статус</th>
-                        <th>Uptime</th>
-                        <th>Загрузка</th>
-                        <th>Выгрузка</th>
-                    </tr>
-                </thead>
-                <tbody id="rows"></tbody>
-            </table>
-            <canvas id="graph" height="120"></canvas>
-        </div>
+<div class="table">
+<table>
+<thead>
+<tr>
+<th>Session</th>
+<th>Status</th>
+<th>Uptime</th>
+<th>Remote IP</th>
+<th>VPN IP</th>
+<th>RX</th>
+<th>TX</th>
+</tr>
+</thead>
+<tbody id="rows"></tbody>
+</table>
 
-    </main>
+<canvas id="graph" height="120"></canvas>
+</div>
 
-    <script>
-        function mb(v) {
-            return (v / 1024 / 1024).toFixed(1) + " MB";
-        }
+</main>
 
-        async function load() {
-            const res = await fetch("/api/realtime");
-            const data = await res.json();
+<script>
 
-            const tbody = document.getElementById("rows");
+function mb(v){
+  return ((v || 0) / 1024 / 1024).toFixed(1) + " MB";
+}
 
-            let totalRx = 0;
-            let totalTx = 0;
-            let online = 0;
+async function load(){
 
-            const sorted = Object.entries(data).sort((a, b) => {
-                if (a[1].online !== b[1].online) {
-                    return b[1].online - a[1].online;
-                }
-                return a[0].localeCompare(b[0]);
-            });
+  const res = await fetch("/api/realtime");
+  const data = await res.json();
 
-            let html = "";
+  const sessions = data.sessions || [];
+  const usersMeta = data.users || {};
 
-            for (const [user, s] of sorted) {
-                if (s.online) online++;
+  const tbody = document.getElementById("rows");
 
-                totalRx += s.rx || 0;
-                totalTx += s.tx || 0;
+  const users = {};
 
-                const statusClass = s.online ? "online" : "offline";
-                const statusText = s.online ? "ONLINE" : "OFFLINE";
+  sessions.forEach(s=>{
+    if(!users[s.username]) users[s.username] = [];
+    users[s.username].push(s);
+  });
 
-                html += `
-                <tr class="fade">
-                <td>${user}</td>
-                <td class="status ${statusClass}">${statusText}</td>
-                <td>${s.uptime}</td>
-                <td class="traffic">${mb(s.rx || 0)}</td>
-                <td class="traffic">${mb(s.tx || 0)}</td>
-                </tr>
-                `;
-            }
+  const sortedUsers = Object.keys(users).sort();
 
-            tbody.innerHTML = html;
+  let html = "";
+  let onlineUsers = 0;
+  let totalRx = 0;
+  let totalTx = 0;
 
-            document.getElementById("count-online").innerText = online;
-            document.getElementById("total-rx").innerText = mb(totalRx);
-            document.getElementById("total-tx").innerText = mb(totalTx);
+  sortedUsers.forEach(user=>{
 
-            document.getElementById("updated").innerText =
-                "обновлено " + new Date().toLocaleTimeString();
-        }
+    const sess = users[user];
+    onlineUsers++;
 
-        load();
-        setInterval(load, 5000);
+    let userRx = 0;
+    let userTx = 0;
 
-        const canvas = document.getElementById("graph");
-        const ctx = canvas.getContext("2d");
+    sess.forEach(s=>{
+      userRx += s.rx || 0;
+      userTx += s.tx || 0;
+    });
 
-        async function drawGraph() {
-            const res = await fetch("/api/history");
-            const history = await res.json();
+    totalRx += userRx;
+    totalTx += userTx;
 
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+    html += `
+      <tr style="background:#0f141c">
+        <td colspan="7">
+          <b>${user}</b>
+          <span style="color:#8b949e">(${sess.length} sessions)</span>
+        </td>
+      </tr>
+    `;
 
-            let users = Object.keys(history);
-            if (!users.length) return;
+    sess.forEach(s=>{
+      html += `
+        <tr class="fade">
+          <td>↳ ${s.session_id}</td>
+          <td class="status online">ONLINE</td>
+          <td>${s.uptime}</td>
+          <td>${s.remote_ip}</td>
+          <td>${s.vpn_ip || "-"}</td>
+          <td class="traffic">${mb(s.rx)}</td>
+          <td class="traffic">${mb(s.tx)}</td>
+        </tr>
+      `;
+    });
 
-            let maxVal = 0;
+  });
 
-            users.forEach(u => {
-                history[u].forEach(p => {
-                    maxVal = Math.max(maxVal, p.rx + p.tx);
-                });
-            });
+  // --- OFFLINE USERS ---
+  Object.entries(usersMeta).forEach(([user,u])=>{
+    if(!u.online){
+      html += `
+        <tr>
+          <td>${user}</td>
+          <td class="status offline">OFFLINE</td>
+          <td>-</td>
+          <td>-</td>
+          <td>-</td>
+          <td>-</td>
+          <td>-</td>
+        </tr>
+      `;
+    }
+  });
 
-            let colorIndex = 0;
+  tbody.innerHTML = html;
 
-            users.forEach(user => {
-                const data = history[user];
+  document.getElementById("count-online").innerText = onlineUsers;
+  document.getElementById("total-rx").innerText = mb(totalRx);
+  document.getElementById("total-tx").innerText = mb(totalTx);
+  document.getElementById("updated").innerText =
+    "обновлено " + new Date().toLocaleTimeString();
+}
 
-                ctx.beginPath();
-                ctx.strokeStyle = `hsl(${colorIndex * 60},70%,60%)`;
-                colorIndex++;
+load();
+setInterval(load,5000);
 
-                data.forEach((p, i) => {
-                    const x = (i / 60) * canvas.width;
-                    const y = canvas.height - ((p.rx + p.tx) / maxVal) * canvas.height;
+// --- GRAPH ---
 
-                    if (i === 0) ctx.moveTo(x, y);
-                    else ctx.lineTo(x, y);
-                });
+const canvas = document.getElementById("graph");
+const ctx = canvas.getContext("2d");
 
-                ctx.stroke();
-            });
-        }
+async function drawGraph(){
 
-        setInterval(drawGraph, 5000);
-        drawGraph();
-    </script>
+  const res = await fetch("/api/history");
+  const history = await res.json();
+
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  const users = Object.keys(history);
+  if(!users.length) return;
+
+  let maxVal = 1;
+
+  users.forEach(u=>{
+    history[u].forEach(p=>{
+      maxVal = Math.max(maxVal, p.rx + p.tx);
+    });
+  });
+
+  let colorIndex = 0;
+
+  users.forEach(user=>{
+    const data = history[user];
+
+    ctx.beginPath();
+    ctx.strokeStyle = `hsl(${colorIndex*60},70%,60%)`;
+    colorIndex++;
+
+    data.forEach((p,i)=>{
+      const x = (i / 60) * canvas.width;
+      const y = canvas.height - ((p.rx + p.tx) / maxVal) * canvas.height;
+
+      if(i===0) ctx.moveTo(x,y);
+      else ctx.lineTo(x,y);
+    });
+
+    ctx.stroke();
+  });
+}
+
+drawGraph();
+setInterval(drawGraph,5000);
+
+</script>
 
 </body>
-
 </html>

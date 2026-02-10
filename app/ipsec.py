@@ -3,12 +3,18 @@ import subprocess
 import re
 
 
+# --- REGEX ---
+
 RE_ESTABLISHED = re.compile(
-    r'\[(\d+)\]: ESTABLISHED (\d+) (minutes?|hours?) ago'
+    r'\[(\d+)\]: ESTABLISHED (\d+) (minute|minutes|hour|hours) ago.*\.\.\.(\d+\.\d+\.\d+\.\d+)'
 )
 
 RE_IDENTITY = re.compile(
     r'Remote EAP identity: (\S+)'
+)
+
+RE_VPN_IP = re.compile(
+    r'=== (\d+\.\d+\.\d+\.\d+)/32'
 )
 
 RE_TRAFFIC = re.compile(
@@ -16,79 +22,130 @@ RE_TRAFFIC = re.compile(
 )
 
 
+# --- HELPERS ---
+
+def _uptime_to_seconds(value, unit):
+    if "hour" in unit:
+        return value * 3600
+    return value * 60
+
+
+def fmt_uptime(sec):
+    h = sec // 3600
+    m = (sec % 3600) // 60
+    if h:
+        return f"{h}h {m}m"
+    return f"{m}m"
+
+
+# --- PARSER ---
+
 def parse_ipsec_status():
-    proc = subprocess.run(
+
+    output = subprocess.check_output(
         ["ipsec", "statusall"],
-        capture_output=True,
         text=True
     )
 
-    lines = proc.stdout.splitlines()
+    sessions = []
+    current = None
 
-    sessions = {}
-    current_ike = None
+    for line in output.splitlines():
 
-    for line in lines:
-
-        # --- ESTABLISHED ---
+        # --- NEW SESSION ---
         m = RE_ESTABLISHED.search(line)
         if m:
-            ike_id = m.group(1)
-            uptime = f"{m.group(2)} {m.group(3)}"
+            if current:
+                sessions.append(current)
 
-            sessions[ike_id] = {
+            sid = int(m.group(1))
+            uptime = _uptime_to_seconds(
+                int(m.group(2)),
+                m.group(3)
+            )
+
+            current = {
+                "session_id": sid,
                 "username": "unknown",
-                "uptime": uptime,
+                "remote_ip": m.group(4),
+                "vpn_ip": None,
+                "uptime_sec": uptime,
                 "rx": 0,
                 "tx": 0,
                 "online": True
             }
-            current_ike = ike_id
+            continue
+
+        if not current:
             continue
 
         # --- USERNAME ---
         m = RE_IDENTITY.search(line)
-        if m and current_ike:
-            sessions[current_ike]["username"] = m.group(1)
+        if m:
+            current["username"] = m.group(1)
+            continue
+
+        # --- VPN IP ---
+        m = RE_VPN_IP.search(line)
+        if m:
+            current["vpn_ip"] = m.group(1)
             continue
 
         # --- TRAFFIC ---
         m = RE_TRAFFIC.search(line)
-        if m and current_ike:
-            sessions[current_ike]["rx"] += int(m.group(1))
-            sessions[current_ike]["tx"] += int(m.group(2))
-            continue
+        if m:
+            current["rx"] += int(m.group(1))
+            current["tx"] += int(m.group(2))
 
-    # --- агрегируем по пользователю ---
+    if current:
+        sessions.append(current)
+
+    # --- агрегируем пользователей ---
     users = {}
 
-    for s in sessions.values():
+    for s in sessions:
         user = s["username"]
 
         if user not in users:
             users[user] = {
                 "online": True,
-                "uptime": s["uptime"],
+                "uptime_sec": 0,
                 "rx": 0,
                 "tx": 0
             }
+
+        users[user]["uptime_sec"] = max(
+            users[user]["uptime_sec"],
+            s["uptime_sec"]
+        )
 
         users[user]["rx"] += s["rx"]
         users[user]["tx"] += s["tx"]
 
-    # --- добавляем offline пользователей ---
-    all_users = load_all_users()
-
-    for u in all_users:
+    # --- offline users ---
+    for u in load_all_users():
         if u not in users:
             users[u] = {
                 "online": False,
-                "uptime": "-",
+                "uptime_sec": 0,
                 "rx": 0,
                 "tx": 0
             }
 
-    return users
+    # --- форматируем uptime ---
+    for s in sessions:
+        s["uptime"] = fmt_uptime(s["uptime_sec"])
+
+    for u in users.values():
+        u["uptime"] = fmt_uptime(u["uptime_sec"])
+
+    return {
+        "sessions": sessions,
+        "users": users
+    }
+
+
+# --- SECRETS PARSER ---
 
 def load_all_users():
     users = set()
