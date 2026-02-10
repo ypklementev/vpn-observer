@@ -1,153 +1,130 @@
-# app/ipsec.py
 import subprocess
 import re
 
 
-# --- REGEX ---
-
-RE_ESTABLISHED = re.compile(
-    r'\[(\d+)\]: ESTABLISHED (\d+) (minute|minutes|hour|hours) ago.*\.\.\.(\d+\.\d+\.\d+\.\d+)'
+RE_SESSION = re.compile(
+    r'ikev2-vpn\[(\d+)\]: ESTABLISHED (.+?) ago, .*?\.\.\.(\S+)\[(.*?)\]'
 )
 
-RE_IDENTITY = re.compile(
+RE_EAP = re.compile(
     r'Remote EAP identity: (\S+)'
 )
 
-RE_VPN_IP = re.compile(
-    r'=== (\d+\.\d+\.\d+\.\d+)/32'
+RE_CHILD = re.compile(
+    r'ikev2-vpn\{(\d+)\}:.*?(\d+) bytes_i.*?(\d+) bytes_o.*?=== (\S+)'
 )
 
-RE_TRAFFIC = re.compile(
-    r'(\d+) bytes_i .* (\d+) bytes_o'
-)
-
-
-# --- HELPERS ---
-
-def _uptime_to_seconds(value, unit):
-    if "hour" in unit:
-        return value * 3600
-    return value * 60
-
-
-def fmt_uptime(sec):
-    h = sec // 3600
-    m = (sec % 3600) // 60
-    if h:
-        return f"{h}h {m}m"
-    return f"{m}m"
-
-
-# --- PARSER ---
 
 def parse_ipsec_status():
 
-    output = subprocess.check_output(
+    out = subprocess.run(
         ["ipsec", "statusall"],
+        capture_output=True,
         text=True
-    )
+    ).stdout
 
-    sessions = []
-    current = None
+    lines = out.splitlines()
 
-    for line in output.splitlines():
+    sessions = {}
+    current_ike = None
 
-        # --- NEW SESSION ---
-        m = RE_ESTABLISHED.search(line)
+    # --------------------
+    # PASS 1 — IKE sessions
+    # --------------------
+
+    for line in lines:
+
+        m = RE_SESSION.search(line)
         if m:
-            if current:
-                sessions.append(current)
+            ike_id = m.group(1)
+            uptime = m.group(2)
+            remote_ip = m.group(3)
+            bracket_identity = m.group(4)
 
-            sid = int(m.group(1))
-            uptime = _uptime_to_seconds(
-                int(m.group(2)),
-                m.group(3)
-            )
-
-            current = {
-                "session_id": sid,
-                "username": "unknown",
-                "remote_ip": m.group(4),
-                "vpn_ip": None,
-                "uptime_sec": uptime,
+            sessions[ike_id] = {
+                "session_id": ike_id,
+                "username": bracket_identity,
+                "remote_ip": remote_ip,
+                "vpn_ip": "-",
+                "uptime": uptime,
                 "rx": 0,
                 "tx": 0,
                 "online": True
             }
+
+            current_ike = ike_id
             continue
 
-        if not current:
+        m = RE_EAP.search(line)
+        if m and current_ike:
+            sessions[current_ike]["username"] = m.group(1)
             continue
 
-        # --- USERNAME ---
-        m = RE_IDENTITY.search(line)
-        if m:
-            current["username"] = m.group(1)
+    # --------------------
+    # PASS 2 — CHILD traffic
+    # --------------------
+
+    for line in lines:
+
+        m = RE_CHILD.search(line)
+        if not m:
             continue
 
-        # --- VPN IP ---
-        m = RE_VPN_IP.search(line)
-        if m:
-            current["vpn_ip"] = m.group(1)
-            continue
+        child_id = m.group(1)
+        rx = int(m.group(2))
+        tx = int(m.group(3))
+        vpn_ip = m.group(4).split("/")[0]
 
-        # --- TRAFFIC ---
-        m = RE_TRAFFIC.search(line)
-        if m:
-            current["rx"] += int(m.group(1))
-            current["tx"] += int(m.group(2))
+        # child reqid обычно соответствует ike
+        # strongswan выводит child сразу после ike блока
+        # поэтому берём последний IKE
 
-    if current:
-        sessions.append(current)
+        if sessions:
+            last_ike = list(sessions.keys())[-1]
 
-    # --- агрегируем пользователей ---
+            sessions[last_ike]["rx"] += rx
+            sessions[last_ike]["tx"] += tx
+            sessions[last_ike]["vpn_ip"] = vpn_ip
+
+    # --------------------
+    # USERS AGGREGATION
+    # --------------------
+
     users = {}
 
-    for s in sessions:
-        user = s["username"]
+    for s in sessions.values():
+        u = s["username"]
 
-        if user not in users:
-            users[user] = {
+        if u not in users:
+            users[u] = {
                 "online": True,
-                "uptime_sec": 0,
                 "rx": 0,
                 "tx": 0
             }
 
-        users[user]["uptime_sec"] = max(
-            users[user]["uptime_sec"],
-            s["uptime_sec"]
-        )
+        users[u]["rx"] += s["rx"]
+        users[u]["tx"] += s["tx"]
 
-        users[user]["rx"] += s["rx"]
-        users[user]["tx"] += s["tx"]
+    # --------------------
+    # OFFLINE USERS
+    # --------------------
 
-    # --- offline users ---
     for u in load_all_users():
         if u not in users:
             users[u] = {
                 "online": False,
-                "uptime_sec": 0,
                 "rx": 0,
                 "tx": 0
             }
 
-    # --- форматируем uptime ---
-    for s in sessions:
-        s["uptime"] = fmt_uptime(s["uptime_sec"])
-
-    for u in users.values():
-        u["uptime"] = fmt_uptime(u["uptime_sec"])
-
     return {
-        "sessions": sessions,
+        "sessions": list(sessions.values()),
         "users": users
     }
 
 
-# --- SECRETS PARSER ---
-
 def load_all_users():
+
     users = set()
 
     try:
