@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Users</h2>
+<table>
+<tr>
+    <th>User</th>
+    <th>Sessions</th>
+    <th>Last seen</th>
+    <th>Status</th>
+</tr>
+{% for u in users %}
+<tr>
+    <td><a href="/admin/user/{{ u.username }}">{{ u.username }}</a></td>
+    <td>{{ u.sessions }}</td>
+    <td>{{ u.last_seen }}</td>
+    <td class="{{ 'online' if u.online else 'offline' }}">
+        {{ 'online' if u.online else 'offline' }}
+    </td>
+</tr>
+{% endfor %}
+</table>
+{% endblock %}
